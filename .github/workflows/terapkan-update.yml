@@ -46,4 +46,3 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then echo "Tidak ada perubahan."; else git commit -m "Terapkan update dari update.zip" && git push; fi
-          

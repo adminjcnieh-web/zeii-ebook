@@ -1,0 +1,34 @@
+name: Buat Admin
+
+# Membuat akun penulis (admin) Zeii Ebook, atau me-reset password-nya. Semuanya dari HP.
+# Siapkan 2 RAHASIA di GitHub (Settings -> Secrets and variables -> Actions -> New repository secret):
+#   FIREBASE_SERVICE_ACCOUNT = seluruh isi file service-account.json dari proyek Firebase Zeii Ebook
+#   ADMIN_PASSWORD           = password admin (min 8, huruf + angka)
+# Lalu Actions -> Buat Admin -> Run workflow. Setelah berhasil, HAPUS secret ADMIN_PASSWORD.
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'Username admin (huruf kecil/angka, min 3)'
+        required: true
+      nama:
+        description: 'Nama penulis'
+        required: true
+        default: 'Zeii'
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Buat admin
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_USERNAME: ${{ inputs.username }}
+          ADMIN_NAME: ${{ inputs.nama }}
+        run: node scripts/buat-admin.mjs
