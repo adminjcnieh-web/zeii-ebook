@@ -1,0 +1,13 @@
+{
+  "name": "zeii-ebook",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "cd backend && node --test test/api.test.js test/scripts.test.js",
+    "test:e2e": "node backend/test/e2e/e2e.mjs"
+  },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

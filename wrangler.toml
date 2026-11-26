@@ -1,0 +1,19 @@
+# Konfigurasi Cloudflare Worker Zeii Ebook.
+name = "zeii-ebook"
+main = "backend/src/index.js"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[vars]
+# Milik proyek Firebase "zeii-ebook" (apiKey web memang bersifat publik; rahasianya ada di service account):
+FIREBASE_PROJECT_ID = "zeii-ebook"
+FIREBASE_API_KEY = "AIzaSyD5NOxVo_cf05WmKx2Bxs90E4Eu6Q_6wlY"
+EMAIL_DOMAIN = "zeii-ebook.local"
+ALLOWED_ORIGINS = ""
+# Ubah jadi "closed" bila ingin menutup pendaftaran pembaca baru.
+REGISTRATION = "open"
+
+# RAHASIA FIREBASE_SERVICE_ACCOUNT diisi di dashboard Cloudflare: Settings -> Variables and Secrets (jangan ditulis di file ini).
