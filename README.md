@@ -30,8 +30,14 @@ Harus proyek baru, jangan pakai proyek Japanese Club (datanya akan tercampur).
 4. Roda gigi → **Project settings → General**: catat **Project ID**. Di bawah, **Add app → Web (`</>`)**, beri nama bebas, lalu catat `apiKey`.
 5. **Project settings → Service accounts → Generate new private key**. Hasilnya file `.json`. Simpan baik-baik, jangan dibagikan.
 
-### 2. Taruh kode di GitHub
-Buat repo baru (mis. `zeii-ebook`), lalu upload isi ZIP ini ke root repo (termasuk folder `.github`). Di GitHub mobile, pakai Chrome "Situs desktop" untuk Upload files.
+### 2. Taruh kode di GitHub (tanpa upload folder)
+Kamu tidak perlu membuka ZIP atau mengunggah folder.
+1. Buat repo baru di GitHub (mis. `zeii-ebook`), centang "Add a README".
+2. **Add file → Upload files** → pilih ZIP ini dan **ganti namanya jadi `update.zip`** (persis). Commit.
+3. **Add file → Create new file**. Di kolom nama ketik `.github/workflows/terapkan-update.yml` (garis miring otomatis membuat folder), lalu tempel isi file `terapkan-update.yml` yang kamu terima terpisah. Commit.
+4. Tab **Actions → Terapkan Update → Run workflow**. Setelah hijau, semua file sudah ada di repo.
+5. Ulangi langkah 3 untuk file `.github/workflows/buat-admin.yml` (isinya dari file `buat-admin.yml`). Dua file ini harus ditempel manual karena GitHub melarang workflow membuat workflow.
+Update berikutnya cukup: upload `update.zip` baru lalu jalankan **Terapkan Update** lagi.
 
 ### 3. Isi pengaturan
 Di `wrangler.toml`, `FIREBASE_PROJECT_ID` dan `FIREBASE_API_KEY` sudah diisi untuk proyek Firebase `zeii-ebook`. Kalau memakai proyek lain, ganti keduanya.

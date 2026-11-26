@@ -1,0 +1,15 @@
+{
+  "name": "zeii-ebook-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API Zeii Ebook (Cloudflare Worker, tanpa dependensi runtime)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/api.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
