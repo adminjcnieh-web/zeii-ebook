@@ -1,0 +1,49 @@
+name: Terapkan Update
+
+# Cara pakai (cukup dari HP, tanpa membuka zip dan tanpa upload folder):
+# 1. Upload satu file zip ke repo, namanya persis: update.zip   (Add file -> Upload files). Jangan dibuka dulu.
+# 2. Tab Actions -> Terapkan Update -> Run workflow
+# Workflow ini membuka zip, menaruh semua file di repo, lalu menghapus update.zip.
+# Tidak menyentuh: folder .github, .firebaserc, service-account*.json, .dev.vars.
+# wrangler.toml hanya dibuat bila belum ada (supaya pengaturanmu tidak tertimpa).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cek update.zip
+        run: |
+          test -f update.zip || { echo "File update.zip tidak ada di repo. Upload dulu ke folder paling atas."; exit 1; }
+          unzip -tq update.zip
+
+      - name: Buka dan taruh file
+        run: |
+          rm -rf /tmp/upd && mkdir /tmp/upd
+          unzip -q update.zip -d /tmp/upd
+          SRC=/tmp/upd
+          if [ "$(ls -A /tmp/upd | wc -l)" = "1" ] && [ -d "/tmp/upd/$(ls /tmp/upd)" ]; then SRC="/tmp/upd/$(ls /tmp/upd)"; fi
+          echo "Sumber: $SRC"
+          EX=""
+          [ -f wrangler.toml ] && EX="--exclude=./wrangler.toml"
+          tar -C "$SRC" \
+            --exclude='./.git' --exclude='./.github' --exclude='node_modules' \
+            --exclude='./.firebaserc' $EX \
+            --exclude='service-account*.json' --exclude='.dev.vars' --exclude='./update.zip' \
+            -cf - . | tar -xf -
+          rm -f update.zip
+
+      - name: Simpan ke repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Tidak ada perubahan."; else git commit -m "Terapkan update dari update.zip" && git push; fi
+          
