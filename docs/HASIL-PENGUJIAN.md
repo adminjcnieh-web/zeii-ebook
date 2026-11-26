@@ -3,7 +3,7 @@
 Diuji di sandbox pada 26 Nov 2026. Firebase dan Cloudflare yang dipakai adalah TIRUAN; belum diuji di layanan asli.
 
 ## Yang benar-benar dijalankan
-**Tes API (13, node:test) - lulus semua**
+**Tes API dan skrip (14, node:test) - lulus semua**
 - Daftar pembaca (otomatis masuk, role tidak bisa dipaksa jadi admin, username kembar/pendek/password lemah ditolak, pendaftaran bisa ditutup).
 - Wajib login, akun nonaktif ditolak, ganti password (butuh password lama), ganti nama.
 - Admin: lihat pembaca, nonaktifkan, reset password; pembaca tidak boleh; admin tidak bisa dinonaktifkan.
@@ -12,7 +12,7 @@ Diuji di sandbox pada 26 Nov 2026. Firebase dan Cloudflare yang dipakai adalah T
 - Hapus novel membersihkan bab, isi bab, sampul, dan rak.
 - Sampul: unggah/ambil/hapus; bukan JPEG, bukan gambar, terlalu besar ditolak.
 - Rak: favorit, simpan bab + posisi, pulih posisi, rak milik sendiri, hapus, novel ditarik hilang dari rak, batas laju.
-- Skrip buat-admin: buat, reset password, tidak mengambil alih username pembaca.
+- Skrip buat-admin: buat, reset password, tidak mengambil alih username pembaca, dan memperbaiki akun "yatim" (ada di Authentication tetapi tanpa profil) sisa percobaan gagal.
 
 **Tes e2e di Chromium sungguhan (16 langkah) - lulus semua**
 Daftar → rute admin tertutup untuk pembaca; salah password; admin buat novel; impor .docx (4 bab dikenali, judul dokumen jadi "Pembuka" tidak dicentang, ubah judul, simpan); impor .txt (nomor lanjut); unggah sampul PNG (dikecilkan di browser); ubah/sembunyikan/hapus bab; pembaca melihat beranda, detail, membaca (karakter khusus aman); pengaturan tampilan baca tersimpan setelah muat ulang; posisi gulir tersimpan dan dipulihkan, kartu "Lanjutkan membaca"; bab berikutnya mulai dari atas, daftar bab, favorit, rak; pencarian + genre; bab draf tidak bisa dibuka lewat alamat; nonaktifkan pembaca; ganti nama, tema gelap, keluar; tampilan desktop; tidak ada galat JavaScript (termasuk aturan CSP).

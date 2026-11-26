@@ -23,3 +23,13 @@ test('buat admin: akun bisa masuk sebagai admin; diulang = reset password; tidak
   assert.equal(fake.getDoc('users/uidRead0001').role, 'reader');
   await assert.rejects(() => buatAdmin(fake.env, { username: 'x', fullName: 'A', password: 'pendek' }));
 });
+
+test('buat admin: sisa akun Auth tanpa profil (percobaan gagal sebelumnya) diperbaiki, bukan error', async () => {
+  const { createAuthUser } = await import('../src/lib/google.js');
+  await createAuthUser(fake.env, { username: 'zeii', password: 'Lama12345', displayName: 'Zeii' }); // yatim: tidak ada dokumen Firestore
+  assert.equal((await login('zeii', 'Lama12345')).status, 403); // gejala: "Akun belum terdaftar"
+  const r = await buatAdmin(fake.env, { username: 'zeii', fullName: 'Zeii', password: 'Baru12345' });
+  assert.equal(r.reset, false);
+  const l = await login('zeii', 'Baru12345'); assert.equal(l.status, 200); assert.equal((await l.json()).user.role, 'admin');
+  assert.equal(fake.countDocs('users'), 1);
+});

@@ -28,10 +28,13 @@ export async function buatAdmin(env, { username, fullName, password }) {
     return { uid: owner.uid, username: uname, reset: true };
   }
   const now = new Date();
-  const uid = await createAuthUser(env, { username: uname, password, displayName: name });
+  // Sisa percobaan sebelumnya (mis. database belum dibuat): akun Auth ada tetapi profil di Firestore tidak ada. Pakai ulang, jangan gagal.
+  let uid = await lookupAuthUid(env, { username: uname });
+  if (uid) await updateAuthUser(env, uid, { password, disableUser: false, displayName: name });
+  else uid = await createAuthUser(env, { username: uname, password, displayName: name });
   await db.commit([
-    op.create(`usernames/${uname}`, { uid, createdAt: now }),
-    op.create(`users/${uid}`, { fullName: name, username: uname, usernameLower: uname, role: 'admin', active: true, joinedAt: now.toISOString().slice(0, 10), createdAt: now }),
+    op.set(`usernames/${uname}`, { uid, createdAt: now }),
+    op.set(`users/${uid}`, { fullName: name, username: uname, usernameLower: uname, role: 'admin', active: true, joinedAt: now.toISOString().slice(0, 10), createdAt: now }),
   ]);
   return { uid, username: uname, reset: false };
 }

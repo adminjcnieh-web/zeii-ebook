@@ -75,7 +75,7 @@ Menutup pendaftaran: ubah `REGISTRATION = "closed"` di `wrangler.toml`.
 
 ## Untuk pengembang
 ```
-npm test          # 13 tes API + skrip (Firebase tiruan)
+npm test          # 14 tes API + skrip (Firebase tiruan)
 npm run test:e2e  # 16 langkah di Chromium sungguhan (butuh Playwright + python3)
 ```
 Struktur: `backend/src` (Worker), `public` (web statis tanpa framework), `scripts/buat-admin.mjs`.
