@@ -63,41 +63,80 @@ export async function readTxt(file) {
 }
 
 // ---------- PDF (pustaka dimuat dari CDN saat dibutuhkan) ----------
+/**
+ * Murni (tanpa DOM, bisa diuji): halaman PDF -> paragraf.
+ * pages: [{ rows: [{ y, x, text }] }] urut dari atas ke bawah. Membuang nomor halaman, kepala halaman yang berulang,
+ * titik-titik daftar isi; paragraf baru dikenali dari lekuk baris pertama (bukan hanya jarak), dan bersambung antarhalaman.
+ */
+export function pdfPagesToParas(pages) {
+  const norm = (t) => t.replace(/\s+/g, ' ').trim().toLowerCase();
+  const freq = new Map();
+  pages.forEach((pg) => new Set([...pg.rows.slice(0, 1), ...pg.rows.slice(-1)].map((r) => norm(r.text)).filter(Boolean)).forEach((t) => freq.set(t, (freq.get(t) || 0) + 1)));
+  const running = new Set([...freq].filter(([t, n]) => n >= 4 && t.length <= 60 && !/^\d+$/.test(t)).map(([t]) => t));
+  const kept = pages.map((pg) => pg.rows.map((r) => ({ ...r, text: r.text.trim() })).filter((r, i, arr) => r.text && !/^[-–—\s]*\d{1,4}[-–—\s]*$/.test(r.text) && !/(\. ?){4,}/.test(r.text) && !((i === 0 || i === arr.length - 1) && running.has(norm(r.text)))));
+  // Batas kiri tiap halaman (halaman genap/ganjil bisa berbeda): x paling kiri dari baris isi yang cukup panjang.
+  let lastMargin = null;
+  const margins = kept.map((rows) => {
+    const xs = rows.filter((r) => r.text.length >= 25).map((r) => r.x).sort((a, b) => a - b);
+    if (xs.length >= 3) lastMargin = xs[Math.floor(xs.length * 0.1)];
+    return lastMargin;
+  });
+  const firstKnown = margins.find((m) => m !== null) ?? 0;
+  const out = []; let cur = '';
+  const flush = () => { if (cur.trim()) out.push({ text: cur.trim(), heading: false }); cur = ''; };
+  let prev = null;
+  kept.forEach((rows, pi) => {
+    const margin = margins[pi] ?? firstKnown;
+    const gaps = rows.slice(1).map((r, k) => rows[k].y - r.y).filter((g) => g > 0).sort((a, b) => a - b);
+    const normal = gaps[Math.floor(gaps.length / 2)] || 14;
+    rows.forEach((r, k) => {
+      const indented = r.x > margin + 12;
+      const gap = k > 0 ? rows[k - 1].y - r.y : 0;
+      if (indented || gap > normal * 1.6 || (prev && prev.indented && prev.text.length < 40 && !indented)) flush();
+      cur += (cur && !cur.endsWith('-') ? ' ' : '') + r.text;
+      prev = { indented, text: r.text };
+    });
+  });
+  flush();
+  return out;
+}
+
 export async function readPdf(file, loadScript) {
   await loadScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
   const lib = window.pdfjsLib;
   lib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-  const paras = [];
+  const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const tc = await (await pdf.getPage(i)).getTextContent();
     const rows = [];
     for (const it of tc.items) {
       if (!it.str.trim() && !it.hasEOL) continue;
-      const y = Math.round(it.transform[5]);
+      const y = Math.round(it.transform[5]); const x = Math.round(it.transform[4]);
       const row = rows.find((r) => Math.abs(r.y - y) < 3);
-      if (row) row.text += it.str; else rows.push({ y, text: it.str });
+      if (row) { row.text += it.str; row.x = Math.min(row.x, x); } else rows.push({ y, x, text: it.str });
     }
     rows.sort((a, b) => b.y - a.y);
-    let prevY = null, cur = '';
-    const gaps = rows.slice(1).map((r, k) => rows[k].y - r.y).sort((a, b) => a - b);
-    const normal = gaps[Math.floor(gaps.length / 2)] || 14;
-    for (const r of rows) {
-      if (prevY !== null && prevY - r.y > normal * 1.6) { if (cur.trim()) paras.push({ text: cur.trim(), heading: false }); cur = ''; }
-      cur += (cur && !cur.endsWith('-') ? ' ' : '') + r.text.trim();
-      prevY = r.y;
-    }
-    if (cur.trim()) paras.push({ text: cur.trim(), heading: false });
+    pages.push({ rows });
   }
-  return paras;
+  return pdfPagesToParas(pages);
 }
 
 // ---------- Memecah jadi bab ----------
-const HEADER_RE = /^(bab|chapter|chap\.?|part|bagian|episode|ep\.?|prolog|epilog|extra|special)\b[\s\S]{0,70}$/i;
+const HEADER_RE = /^(bab|chapter|chap\.?|part|bagian|episode|ep\.?|prolog|epilog|extra|special|kata pengantar|pengantar|ucapan terima kasih|tentang penulis|daftar isi)\b[\s\S]{0,70}$/i;
 const NUM_ONLY_RE = /^(bab|chapter|chap\.?|part|bagian|episode|ep\.?)\s*[\divxlc]+\s*[.:)-]?\s*$/i;
 const BREAK_RE = /^(\*\s*){3,}$|^[-–—_=]{3,}$|^[#~•]{3,}$/;
 
+const SMALL = new Set(['yang', 'di', 'ke', 'dari', 'dan', 'untuk', 'pada', 'dengan', 'atau', 'the', 'of', 'a', 'in']);
+/** "SEPTEMBER YANG BERBEDA" -> "September yang Berbeda". Judul yang sudah berhuruf campur dibiarkan. */
+function niceTitle(t) {
+  if (t !== t.toUpperCase()) return t;
+  return t.toLowerCase().split(' ').map((w, i) => (i > 0 && SMALL.has(w) ? w : w.split('-').map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join('-'))).join(' ');
+}
+const looksLikeTitle = (t) => t === t.toUpperCase() || t.split(' ').filter((w) => w.length > 3).every((w) => /^[A-Z]/.test(w));
+
 function isHeader(p) {
+  if (p.forced) return true;
   if (p.heading && p.text.length <= 120) return true;
   if (p.text.length > 80 || /[.!?]["”']?$/.test(p.text) && !/^(bab|chapter)\s*[\divxlc]+[.:]/i.test(p.text)) return false;
   return HEADER_RE.test(p.text);
@@ -109,6 +148,25 @@ function isHeader(p) {
  */
 export function splitChapters(paragraphs) {
   const paras = paragraphs.map((p) => ({ ...p, text: p.text.replace(/\s+/g, (s) => (s.includes('\n') ? '\n' : ' ')).trim() })).filter((p) => p.text);
+  // Buang daftar isi: dari "Daftar Isi" sampai paragraf panjang pertama (judul bab yang tepat sebelum isi tetap dipertahankan).
+  const di = paras.findIndex((p) => /^daftar isi$/i.test(p.text));
+  if (di >= 0) {
+    let e = di + 1;
+    while (e < paras.length && paras[e].text.length <= 100 && !/[.!?]["”']?$/.test(paras[e].text)) e++;
+    let keep = e; // judul berhuruf kapital yang menempel pada isi (mis. "BAB 1" + "JUDUL") bukan bagian daftar isi
+    while (keep - 1 > di && e - keep < 4 && paras[keep - 1].text === paras[keep - 1].text.toUpperCase() && paras[keep - 1].text.length <= 40) keep--;
+    paras.splice(di, keep - di);
+  }
+  // Bila tidak ada kata "Bab/Chapter", coba penomoran polos: "1", "2." atau "3. Judul" yang naik berurutan mulai dari 1.
+  if (paras.filter(isHeader).length < 2) {
+    const NUM = /^(\d{1,3})\s*(?:[.):\-–—]\s*(\S.{0,70})?)?$/;
+    let want = 1;
+    paras.forEach((p) => {
+      const m = NUM.exec(p.text);
+      if (m && Number(m[1]) === want && !/[.!?]["”']?$/.test(m[2] || '')) { p.forced = true; p.text = m[2] ? `Bab ${m[1]}: ${m[2]}` : `Bab ${m[1]}`; want++; }
+    });
+    if (want <= 2) paras.forEach((p) => { delete p.forced; }); // hanya satu angka: kemungkinan bukan penanda bab
+  }
   const chapters = [];
   let cur = null; let preface = [];
   for (let i = 0; i < paras.length; i++) {
@@ -117,7 +175,19 @@ export function splitChapters(paragraphs) {
       let title = p.text.replace(/\n/g, ' ');
       const next = paras[i + 1];
       const after = paras[i + 2];
-      if (NUM_ONLY_RE.test(title) && next && !isHeader(next) && next.text.length <= 70 && !/[.!?]$/.test(next.text) && after && !isHeader(after)) { title = `${title.replace(/[.:)-]\s*$/, '')}: ${next.text}`; i++; }
+      // Judul bisa dua-tiga baris berhuruf kapital; kumpulkan selama masih berupa judul pendek tanpa tanda baca akhir.
+      const titleLines = [];
+      for (let k = i + 1; k < paras.length && titleLines.length < 3; k++) {
+        const q = paras[k]; const upper = q.text === q.text.toUpperCase();
+        if (isHeader(q) || q.text.length > 70 || /[.!?]["”']?$/.test(q.text) || (titleLines.length && !upper) || (!titleLines.length && !upper && !/^(bab|chapter|chap\.?|part|episode|ep\.?)\s*[\divxlc]+\s*[.:)-]?\s*$/i.test(title) && !/^bab \d+$/i.test(title))) break;
+        titleLines.push(q.text);
+      }
+      const bodyAfter = paras[i + 1 + titleLines.length];
+      const plain = titleLines.length > 0 && bodyAfter && !isHeader(bodyAfter);
+      const sub = titleLines.join(' ');
+      if ((NUM_ONLY_RE.test(title) || /^bab \d+$/i.test(title)) && plain) { title = `${niceTitle(title.replace(/[.:)-]\s*$/, ''))}: ${niceTitle(sub)}`; i += titleLines.length; }
+      else if (/^(prolog|epilog|kata pengantar)$/i.test(title) && plain && looksLikeTitle(sub)) { title = `${niceTitle(title)}: ${niceTitle(sub)}`; i += titleLines.length; }
+      else if (title === title.toUpperCase()) title = niceTitle(title);
       cur = { title: title.slice(0, 120), lines: [] };
       chapters.push(cur);
     } else if (cur) cur.lines.push(p.text);
@@ -132,10 +202,21 @@ export function splitChapters(paragraphs) {
   const notes = [];
   if (preface.length) {
     const text = preface.join('\n\n'); const words = (text.match(/\S+/g) || []).length;
-    if (words >= 1) { out.unshift({ title: 'Pembuka', text, words, skip: words < 80 }); notes.push('Ada teks sebelum bab pertama (misalnya halaman judul). Ditaruh sebagai "Pembuka"; hilangkan centangnya bila tidak perlu.'); }
+    if (words >= 1) { out.unshift({ title: 'Pembuka', text, words, skip: true }); notes.push('Ada teks sebelum bab pertama (misalnya halaman judul). Ditaruh sebagai "Pembuka" dan tidak dicentang; centang bila ingin dipakai.'); }
   }
   const empty = chapters.length - chapters.map(fin).filter((c) => c.words > 0).length;
   if (empty) notes.push(`${empty} judul bab tanpa isi dilewati.`);
+  const numbered = out.filter((c) => /^(?:bab|chapter|chap\.?|part|bagian|episode|ep\.?)\s*\d{1,4}\b/i.test(c.title)).length;
+  const nums = out.map((c) => { const m = /^(?:bab|chapter|chap\.?|part|bagian|episode|ep\.?)\s*(\d{1,4})\b/i.exec(c.title); return m ? Number(m[1]) : null; }).filter((n) => n !== null);
+  if (nums.length >= 3) {
+    const lo = Math.min(...nums), hi = Math.max(...nums); const have = new Set(nums);
+    const missing = []; for (let n = lo; n <= hi; n++) if (!have.has(n)) missing.push(n);
+    const dup = nums.filter((n, i) => nums.indexOf(n) !== i);
+    const other = out.filter((c) => c.title !== 'Pembuka').length - numbered;
+    notes.unshift(`Terdeteksi ${numbered} bab (nomor ${lo} sampai ${hi})${other > 0 ? ` dan ${other} bagian lain (mis. prolog/epilog)` : ''}.`);
+    if (missing.length) notes.push(`Nomor yang tidak ditemukan: ${missing.slice(0, 15).join(', ')}${missing.length > 15 ? ', ...' : ''}. Cek apakah judulnya tertulis beda.`);
+    if (dup.length) notes.push(`Nomor yang muncul dua kali: ${[...new Set(dup)].slice(0, 10).join(', ')}.`);
+  }
   return { mode: 'headers', chapters: out, notes };
 }
 

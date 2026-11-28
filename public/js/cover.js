@@ -23,6 +23,12 @@ function wrap(title, max = 11) {
   return lines.slice(0, 4);
 }
 
+export function coverPalette(novel) {
+  const h = hash(novel.id + novel.title);
+  const [bg, , ac] = PALETTES[h % PALETTES.length];
+  return { c1: bg, c2: ac };
+}
+
 export function generatedCover(novel) {
   const h = hash(novel.id + novel.title);
   const [bg, fg, ac] = PALETTES[h % PALETTES.length];

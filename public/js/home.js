@@ -1,7 +1,7 @@
 import * as api from './api.js';
 import { esc, STATUS_LABEL, debounce, chapterLabel } from './utils.js';
 import { icon } from './icons.js';
-import { coverHtml, hydrateCovers } from './cover.js';
+import { coverHtml, hydrateCovers, coverPalette } from './cover.js';
 import { loading, errorState, emptyState } from './ui.js';
 
 export const novelCard = (n) => `<a class="card" href="#/novel/${esc(n.id)}">${coverHtml(n)}<h3>${esc(n.title)}</h3>
@@ -19,11 +19,19 @@ export async function homeView({ container, user, isStale }) {
   const genres = [...new Set(all.flatMap((n) => n.genres))].sort((a, b) => a.localeCompare(b, 'id'));
   let q = ''; let g = '';
   const hello = user.fullName.split(' ')[0];
-  container.innerHTML = `<div class="page-head"><div><h1>Halo, ${esc(hello)}</h1><div class="muted">${all.length ? 'Mau baca apa hari ini?' : 'Belum ada novel yang terbit.'}</div></div></div>
-    ${last ? `<a class="resume" href="#/baca/${esc(last.novelId)}/${esc(last.chapterId)}" data-resume>${coverHtml(last.novel)}<div><small>Lanjutkan membaca</small><h2>${esc(last.novel.title)}</h2>
+  const spot = last ? null : [...all].filter((n) => n.chapterCount).sort((x, y) => String(y.lastChapterAt || '').localeCompare(String(x.lastChapterAt || '')))[0];
+  const pal = (n) => { const p = coverPalette(n); return `--c1:${p.c1};--c2:${p.c2}`; };
+  const recent = [...all].sort((x, y) => String(y.lastChapterAt || '').localeCompare(String(x.lastChapterAt || ''))).slice(0, 8);
+  const hero = last
+    ? `<a class="hero resume" href="#/baca/${esc(last.novelId)}/${esc(last.chapterId)}" data-resume style="${pal(last.novel)}"><div class="hero-in">${coverHtml(last.novel)}<div><small>Lanjutkan membaca</small><h2>${esc(last.novel.title)}</h2>
       <div class="where">${esc(chapterLabel(last.chapterNo, last.chapterTitle))}</div>
-      <div class="bar" aria-label="Posisi di bab ini"><i style="width:${Math.round(last.pos * 100)}%"></i></div><span class="go">Lanjut ${icon('chevR', 16)}</span></div></a>` : ''}
-    ${all.length ? `<div class="tools"><div class="search">${icon('search')}<input class="input" id="q" type="search" placeholder="Cari judul atau penulis" aria-label="Cari novel" /></div>
+      <div class="bar" aria-label="Posisi di bab ini"><i style="width:${Math.round(last.pos * 100)}%"></i></div><span class="go">Lanjut membaca ${icon('chevR', 16)}</span></div></div></a>`
+    : spot ? `<a class="hero spot" href="#/novel/${esc(spot.id)}" style="${pal(spot)}"><div class="hero-in">${coverHtml(spot)}<div><small>Baru diperbarui</small><h2>${esc(spot.title)}</h2>
+      <p class="syn">${esc(spot.synopsis || `${spot.chapterCount} bab · ${STATUS_LABEL[spot.status] || ''}`)}</p><span class="go">Buka novel ${icon('chevR', 16)}</span></div></div></a>` : '';
+  container.innerHTML = `<div class="page-head greet"><h1>Halo, ${esc(hello)}</h1><div class="muted">${all.length ? 'Mau baca apa hari ini?' : 'Belum ada novel yang terbit.'}</div></div>
+    ${hero}
+    ${recent.length > 1 ? `<div class="shelf-title"><h2>Rak terbaru</h2></div><div class="shelf-wrap"><div class="shelf" id="shelf">${recent.map((n) => `<a class="shelf-item" href="#/novel/${esc(n.id)}">${coverHtml(n)}<h3>${esc(n.title)}</h3></a>`).join('')}</div></div>` : ''}
+    ${all.length ? `<div class="shelf-title"><h2>Semua novel</h2></div><div class="tools"><div class="search">${icon('search')}<input class="input" id="q" type="search" placeholder="Cari judul atau penulis" aria-label="Cari novel" /></div>
       ${genres.length ? `<div class="chips" id="chips"><button class="chip" aria-pressed="true" data-g="">Semua</button>${genres.map((x) => `<button class="chip" aria-pressed="false" data-g="${esc(x)}">${esc(x)}</button>`).join('')}</div>` : ''}</div>
       <div class="grid" id="grid"></div>` : emptyState({ title: 'Perpustakaan masih kosong', text: user.role === 'admin' ? 'Tambahkan novel pertamamu di menu Kelola.' : 'Tunggu novel pertama terbit ya.', action: user.role === 'admin' ? '<a class="btn btn-primary" href="#/kelola">Buka Kelola</a>' : '' })}`;
   hydrateCovers(container, [...all, ...(last ? [last.novel] : [])]);

@@ -1,0 +1,5 @@
+node_modules/
+.dev.vars
+service-account*.json
+*.jks
+.wrangler/

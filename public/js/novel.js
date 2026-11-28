@@ -1,7 +1,7 @@
 import * as api from './api.js';
 import { esc, STATUS_LABEL, num, readMinutes, timeAgo } from './utils.js';
 import { icon } from './icons.js';
-import { coverHtml, hydrateCovers } from './cover.js';
+import { coverHtml, hydrateCovers, coverPalette } from './cover.js';
 import { loading, errorState, toast } from './ui.js';
 
 export async function novelView({ container, params, user, isStale }) {
@@ -16,15 +16,16 @@ export async function novelView({ container, params, user, isStale }) {
   const resume = shelf?.chapterId && chapters.find((c) => c.id === shelf.chapterId);
   const first = chapters[0];
   const readIdx = resume ? chapters.indexOf(resume) : -1;
-  container.innerHTML = `<a class="btn btn-quiet btn-sm" href="#/" style="margin-left:-12px">${icon('chevL', 18)} Beranda</a>
-    <div class="novel-head" style="margin-top:8px">${coverHtml(n)}<div>
+  const pal = coverPalette(n);
+  container.innerHTML = `<div class="novel-top" style="--c1:${pal.c1};--c2:${pal.c2}"><a class="btn btn-quiet btn-sm" href="#/" style="margin-left:-12px">${icon('chevL', 18)} Beranda</a>
+    <div class="novel-head">${coverHtml(n)}<div>
       <h1>${esc(n.title)}</h1><div class="by">oleh ${esc(n.author || 'Zeii')}</div>
       <div class="stats"><span><b>${chapters.length}</b> bab</span><span><b>${num(n.wordCount)}</b> kata</span><span>±<b>${readMinutes(n.wordCount)}</b> menit baca</span></div>
       <div><span class="tag ${n.status === 'tamat' ? 'tag-tamat' : ''}">${esc(STATUS_LABEL[n.status] || '')}</span> ${n.published ? '' : '<span class="tag tag-draft">Draf, belum terbit</span>'} ${n.genres.map((g) => `<span class="tag tag-tamat">${esc(g)}</span>`).join(' ')}</div>
     </div></div>
     <div class="actions">${first ? `<a class="btn btn-primary" href="#/baca/${esc(n.id)}/${esc((resume || first).id)}">${resume ? `Lanjut Bab ${resume.no}` : 'Mulai membaca'}</a>` : '<span class="muted">Belum ada bab.</span>'}
       <button class="btn" id="fav" aria-pressed="${!!shelf?.fav}">${icon('heart')} <span>${shelf?.fav ? 'Favorit' : 'Tambah ke favorit'}</span></button>
-      ${user.role === 'admin' ? `<a class="btn" href="#/kelola/${esc(n.id)}">${icon('pen')} Kelola</a>` : ''}</div>
+      ${user.role === 'admin' ? `<a class="btn" href="#/kelola/${esc(n.id)}">${icon('pen')} Kelola</a>` : ''}</div></div>
     ${n.synopsis ? `<p class="synopsis">${esc(n.synopsis)}</p>` : ''}
     <h2 class="section-title">Daftar bab ${n.lastChapterAt ? `<span class="muted" style="font:14px var(--sans)">Terakhir diperbarui ${esc(timeAgo(n.lastChapterAt))}</span>` : ''}</h2>
     <ul class="chapters">${chapters.map((c, i) => `<li><a href="#/baca/${esc(n.id)}/${esc(c.id)}" class="${readIdx >= 0 && i < readIdx ? 'read' : ''}"><span class="no">${c.no}</span><span class="t">${esc(c.title)}${c.published ? '' : ' <span class="tag tag-draft">Draf</span>'}</span>${resume?.id === c.id ? '<span class="here">terakhir dibaca</span>' : `<span class="w">${num(c.words)} kata</span>`}</a></li>`).join('')}</ul>`;

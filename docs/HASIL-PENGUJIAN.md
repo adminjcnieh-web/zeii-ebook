@@ -24,3 +24,19 @@ Tangkapan layar diperiksa langsung untuk beranda, detail, pembaca, pratinjau imp
 - Impor .docx buatan Word/Google Docs asli: yang diuji adalah .docx minimal buatan skrip. Gaya "Heading" dan teks biasa seharusnya sama, tetapi file dengan tabel/gambar/daftar bernomor belum dicoba.
 - Layar sentuh asli (gulir, ketuk untuk menyembunyikan bilah), font Literata/Figtree dari Google Fonts (di sandbox memakai font cadangan).
 - Beban banyak pembaca bersamaan dan kuota gratis Firebase pada pemakaian nyata.
+
+## Tampilan baru (v2)
+- Warna indigo + safron (mode gelap: safron di atas ungu tua), huruf judul Young Serif, bacaan Literata, antarmuka Plus Jakarta Sans.
+- Sampul dibuat seperti buku (punggung, tepi halaman, bayangan), beranda punya kartu unggulan berwarna sesuai sampul, "Rak terbaru" dengan papan rak, halaman novel punya latar warna sampul.
+- Tes: 14 tes API/skrip lulus, 16/16 e2e lulus. Dilihat lewat tangkapan layar Chromium (HP 390px dan laptop 1100px, terang dan gelap).
+- **Belum dilihat:** huruf asli dari Google Fonts (sandbox memblokirnya, jadi yang terlihat huruf cadangan), HP sungguhan, dan sampul hasil unggahan foto asli.
+
+## Deteksi 25 bab sekaligus
+- Pemecah bab kini juga mengenali penomoran polos ("1", "2." atau "3. Judul" yang naik berurutan dari 1), selain "Bab/Chapter/Part/Episode N". Pratinjau melaporkan "Terdeteksi N bab (nomor a sampai b)", nomor yang loncat, dan nomor ganda.
+- Tes (1): 25 bab dengan 6 gaya judul berbeda terdeteksi semua; 2 bab dihapus (7 dan 12) dilaporkan hilang. Total 15 tes API/skrip, 16/16 e2e.
+- **Belum dicoba:** file Word/PDF novelmu yang sebenarnya. Kalau judul bab di file-mu bergaya lain, kirim contohnya supaya kusesuaikan.
+
+## Impor PDF novel sungguhan ("Untuknya September", 292 halaman)
+- Dicoba dengan data posisi teks dari PDF contoh milik pengguna (hasil `pdftotext -bbox-layout`, tidak disimpan di paket): terdeteksi **24 bab bernomor + Kata Pengantar, Prolog, Epilog**; judul ke-24 bab sama persis dengan daftar isi; nomor halaman, kepala halaman berulang, daftar isi dibuang; paragraf dikenali dari lekuk baris (halaman genap/ganjil beda margin ditangani); kalimat yang terpotong antarhalaman disambung; judul dua baris digabung; judul HURUF KAPITAL diubah jadi "Huruf Awal Kapital". Halaman judul/hak cipta jadi "Pembuka" (tidak dicentang).
+- Tes otomatis (1) memakai halaman tiruan dengan pola yang sama. Total 16 tes API/skrip, 16/16 e2e.
+- **Belum teruji:** pembacaan PDF oleh pustaka pdf.js di browser sungguhan (CDN tidak terjangkau dari sandbox; yang diuji hanya tahap setelah teks dibaca), dan kecepatan memproses 292 halaman di HP.
